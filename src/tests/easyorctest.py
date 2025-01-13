@@ -1,22 +1,46 @@
 from tqdm import tqdm
-import os
 import cv2
+import importlib
 from ocr.EasyOCRKhawhite import EasyOCRKhawhite
-from logger.logger import logger
 from pathlib import Path
+import json
+from itertools import islice
 
-root_path = Path(".").parent.resolve()
-source_path = root_path / "src/data/source_images"
-result_path = root_path / "src/data/results"
+importlib.import_module("ocr")
 
-ocr = EasyOCRKhawhite()
-for filename in tqdm(os.listdir(source_path), desc="Processing images..."):
-    if filename.endswith(".jpg") or filename.endswith(".png"):
-        source_image_path = os.path.join(source_path, filename)
-        areas = ocr.findTextAreas()
-        for area in areas:
-            logger.info(ocr.readText(area))
+source_path = Path(".") / "Manga109s" / "images"
+result_path = Path(".") / "src" / "data" / "results" / "easyocr"
+result_images_path = result_path / "images"
+result_images_path.mkdir(parents=True, exist_ok=True)
+result_json_file = result_path / "results.json"
 
-        painted_image = ocr.paintAreas(areas)
-        result_image_path = os.path.join(result_path, filename)
-        cv2.imwrite(result_image_path, painted_image)
+
+def easyocr_draw_areas():
+    ocr = EasyOCRKhawhite()
+    for source_manga_path in islice(source_path.iterdir(), 10):
+        result_manga_path = result_images_path / source_manga_path.name
+        result_manga_path.mkdir(parents=True, exist_ok=True)
+        for source_image_path in tqdm(
+            islice(source_manga_path.iterdir(), 5),
+            desc=f"Processing {source_manga_path.name} images...",
+        ):
+            ocr.selectImage(source_image_path)
+            areas = ocr.findTextAreas()
+            painted_image = ocr.drawAreas(areas)
+            result_image_path = result_manga_path / source_image_path.name
+            cv2.imwrite(result_image_path, painted_image)
+
+
+def save_all_txt():
+    ocr = EasyOCRKhawhite()
+    with result_json_file.open("w") as f:
+        for source_image_path in tqdm(
+            source_path.iterdir(), desc="Processing images..."
+        ):
+            ocr.selectImage(source_image_path)
+            results = ocr.findAndReadAll()
+            f.write(json.dump(results))
+
+
+if __name__ == "__main__":
+    easyocr_draw_areas()()

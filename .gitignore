@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Dataset ignore
+/Manga109s
+/src/data/results
+
 # C extensions
 *.so
 
